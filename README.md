@@ -67,15 +67,3 @@ To start dev-refresh on port 8081, with a proxy to `localhost:8080`, and
 running `npm run build-dev` any time anything in `js` or `sass` changes, run:
 
 	dev-refresh --port 8081 --proxy 'localhost:8080' --cmd 'npm run build-dev' js sass
-
-### Other
-
-While dev-refresh is mostly designed to be used while doing web dev, you're not
-required to give a --serve or --proxy argument, so it works just fine as a
-general purpose tool to run a script when directories change, if you install it
-globally (with `npm install -g dev-refresh`) instead of locally.
-
-Say you're making a C application, and want to automatically run `make` when
-anything in `src` changes, you could run:
-
-	dev-refresh src --cmd make
