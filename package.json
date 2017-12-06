@@ -1,0 +1,20 @@
+{
+  "name": "dev-refresh",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "minimist": "^1.2.0",
+    "node-watch": "^0.5.5",
+    "webframe": "^0.8.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "dev-refresh": "cli.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

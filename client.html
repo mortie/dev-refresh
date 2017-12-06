@@ -1,0 +1,60 @@
+<script>(function() {
+	var enableWarnings = true;
+	function warn(str) {
+		if (!enableWarnings) return;
+		console.warn("DEVSERVER:", str);
+	}
+
+	var div = document.createElement("div");
+	div.innerHTML = "Loaded.";
+	div.style.position = "fixed";
+	div.style.top = "0px";
+	div.style.left = "0px";
+	div.style.padding = "8px";
+	div.style.fontSize = "18px";
+	div.style.background = "#eee";
+	div.style.borderLeft = "1px solid black";
+	div.style.borderBottom = "1px solid black";
+	div.style.opacity = "1";
+	div.style.transition = "opacity 2s";
+
+	document.body.appendChild(div);
+	setTimeout(function() {
+		div.style.opacity = "0";
+		setTimeout(function() {
+			document.body.removeChild(div);
+		}, 2000);
+	}, 2000);
+
+	// Don't print warnings to the console when XHR fails due to
+	// reloading the page
+	window.addEventListener("beforeunload", function() {
+		enableWarnings = false;
+		setTimeout(function() { enableWarnings = true; }, 100);
+	});
+
+	function onload() {
+		location.reload();
+	}
+	function onerror() {
+		warn("XHR error");
+		setTimeout(req, 2000);
+	}
+	function onabort() {
+		warn("XHR aborted");
+		setTimeout(req, 2000);
+	}
+
+	function req() {
+		var xhr = new XMLHttpRequest();
+		xhr.onload = onload;
+		xhr.onerror = onerror;
+		xhr.onabort = onabort;
+		xhr.overrideMimeType("text/plain");
+
+		xhr.open("GET", "/__dev-refresh-poll");
+		xhr.send();
+	}
+
+	req();
+})();</script>
