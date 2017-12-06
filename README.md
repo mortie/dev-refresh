@@ -36,7 +36,7 @@ example, to just serve the files in `public/` and automatically reload when
 they change, put this in `package.json`:
 
 	"scripts": {
-		"watch": "./node_modules/.bin/dev-refresh public --serve public"
+		"watch": "dev-refresh public --serve public"
 	}
 
 Now, running `npm run watch` will create a server on `127.0.0.1:8080` which
@@ -50,7 +50,7 @@ ES5. Let's say you want `npm run build-dev` to compile once, and `npm run
 watch` to recompile and serve with dev-refresh. Put this in `package.json`:
 
 	"scripts": {
-		"watch": "./node_modules/.bin/dev-refresh --serve public --cmd 'npm run build-dev' js"
+		"watch": "dev-refresh --serve public --cmd 'npm run build-dev' js"
 		"build-dev": "browserify js/main.js -t [ babelify --sourceMap ] --debug --outfile public/bundle.js",
 	}
 
