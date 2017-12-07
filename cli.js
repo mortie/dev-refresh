@@ -124,14 +124,16 @@ if (args.watchdirs.length > 0) {
 
 // Reload by ending all pending incoming connections
 let pendingResponses = [];
+let reloadId = "";
 function reload() {
 	app.info("Reloading.");
+	reloadId = Math.floor(Math.random() * 1000000).toString();
 	pendingResponses.forEach(res => res.end());
 	pendingResponses.length = 0;
 }
 
 // Inject reload script into HTML files
-let clientHtml = fs.readFileSync(__dirname+"/client.html");
+let clientHtml = fs.readFileSync(__dirname+"/client.html", "utf-8");
 function injectHtml(str, stream) {
 	let rx = /<\s*\/\s*body\s*>/ig;
 
@@ -147,6 +149,9 @@ function injectHtml(str, stream) {
 		return stream.end(str);
 	}
 
+	// Replace {{reloadId}} with the actual ID
+	let inject = clientHtml.replace("{{reloadId}}", reloadId);
+
 	// Extract code after and before the </body> tag
 	let match = matches[matches.length - 1];
 	let idx = str.lastIndexOf(match);
@@ -154,12 +159,15 @@ function injectHtml(str, stream) {
 	let after = str.slice(idx + match.length);
 
 	stream.write(before);
-	stream.write(clientHtml);
+	stream.write(inject);
 	stream.end(after);
 }
 
 // For long polling
 app.get("/__dev-refresh-poll", (req, res) => {
+	let q = req.url.split("?")[1];
+	if (!q) return res.end();
+	if (q !== reloadId) return res.end();
 	pendingResponses.push(res);
 });
 
