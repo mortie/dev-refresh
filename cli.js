@@ -9,6 +9,7 @@ let pathlib = require("path");
 let urllib = require("url");
 let http = require("http");
 let https = require("https");
+let open = require("open");
 
 function usage(code) {
 	console.error("Usage: dev-refresh [options] watch...");
@@ -19,12 +20,13 @@ function usage(code) {
 	console.error(" -p, --proxy <host>  Proxy requests to <host>");
 	console.error("     --port <port>   Serve on port <port>.")
 	console.error("     --host <host>   Serve from host <host>.");
+	console.error(" -n                  Don't open the page in a browser.");
 	process.exit(code);
 }
 
 let argv = parseArgs(process.argv.slice(2), {
 	string: [ "w", "watch", "c", "cmd", "port", "host" ],
-	boolean: [ "h", "help" ],
+	boolean: [ "h", "help", "n" ],
 });
 
 let args = {
@@ -34,7 +36,8 @@ let args = {
 	serve: argv.s || argv.serve,
 	proxy: argv.p || argv.proxy,
 	port: argv.port,
-	host: argv.port,
+	host: argv.host,
+	noOpen: argv.n,
 };
 
 if (args.help) {
@@ -221,9 +224,11 @@ if (args.proxy) {
 				return res.pipe(ores);
 			}
 
-			// Remove content-length, because we'll modify the content,
-			// then send headers
+			// Remove content-length, because we'll modify the content.
+			// Tell the client to not cache anything.
 			delete res.headers["content-length"];
+			res.headers["cache-control"] =
+				"max-age=0, no-cache, must-revalidate, proxy-revalidate";
 			ores.writeHead(res.statusCode, res.headers);
 
 			// Soak up response string, then inject client HTML
@@ -243,3 +248,8 @@ if (args.proxy) {
 
 // Run command once immediately
 runner.run();
+
+// Open in browser
+if (!args.noOpen && (args.serve || args.proxy)) {
+	open("http://"+app.host+":"+app.port);
+}

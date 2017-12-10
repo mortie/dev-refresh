@@ -28,6 +28,7 @@ It will output this:
 	 -p, --proxy <host>  Proxy requests to <host>
 	     --port <port>   Serve on port <port>.
 	     --host <host>   Serve from host <host>.
+	 -n                  Don't open the page in a browser.
 
 ### Basic server
 
