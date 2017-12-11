@@ -20,25 +20,23 @@ function usage(code) {
 	console.error(" -p, --proxy <host>  Proxy requests to <host>");
 	console.error("     --port <port>   Serve on port <port>.")
 	console.error("     --host <host>   Serve from host <host>.");
-	console.error(" -n                  Don't open the page in a browser.");
+	console.error(" -n  --no-open       Don't open the page in a browser.");
 	process.exit(code);
 }
 
-let argv = parseArgs(process.argv.slice(2), {
-	string: [ "w", "watch", "c", "cmd", "port", "host" ],
-	boolean: [ "h", "help", "n" ],
+let args = parseArgs(process.argv.slice(2), {
+	alias: {
+		h: "help",
+		c: "cmd",
+		s: "serve",
+		p: "proxy",
+	},
+	string: [ "serve", "cmd", "port", "host" ],
+	boolean: [ "help", "open", "n" ],
+	default: { open: true }
 });
 
-let args = {
-	watchdirs: argv._,
-	help: argv.h || argv.help,
-	cmd: argv.c || argv.cmd,
-	serve: argv.s || argv.serve,
-	proxy: argv.p || argv.proxy,
-	port: argv.port,
-	host: argv.host,
-	noOpen: argv.n,
-};
+args.open = args.open && !args.n;
 
 if (args.help) {
 	usage(0);
@@ -117,20 +115,24 @@ class Runner {
 let runner = new Runner(args.cmd, reload);
 
 // Watch directory for changes
-if (args.watchdirs.length > 0) {
-	args.watchdirs.forEach(dir => {
+if (args._.length > 0) {
+	args._.forEach(dir => {
 		watch(dir, { recursive: true }, (evt, name) => {
 			runner.run();
 		});
 	});
 }
 
+function randId() {
+	return Math.floor(Math.random() * 1000000000 + 1).toString();
+}
+
 // Reload by ending all pending incoming connections
 let pendingResponses = [];
-let reloadId = "";
+let reloadId = randId();
 function reload() {
 	app.info("Reloading.");
-	reloadId = Math.floor(Math.random() * 1000000).toString();
+	reloadId = randId();
 	pendingResponses.forEach(res => res.end());
 	pendingResponses.length = 0;
 }
@@ -142,7 +144,7 @@ function injectHtml(str, stream) {
 
 	// Don't modify anything if we're not
 	// listening for changes in a directory
-	if (args.watchdirs.length === 0)
+	if (args._.length === 0)
 		return stream.end(str);
 
 	// Find </body>
@@ -169,8 +171,13 @@ function injectHtml(str, stream) {
 // For long polling
 app.get("/__dev-refresh-poll", (req, res) => {
 	let q = req.url.split("?")[1];
+
+	// If we got no query string, or the query string is outdated,
+	// just reload immediately
 	if (!q) return res.end();
 	if (q !== reloadId) return res.end();
+
+	// Otherwise, add it to our list of pending responses for long polling
 	pendingResponses.push(res);
 });
 
@@ -250,6 +257,6 @@ if (args.proxy) {
 runner.run();
 
 // Open in browser
-if (!args.noOpen && (args.serve || args.proxy)) {
+if (args.open && (args.serve || args.proxy)) {
 	open("http://"+app.host+":"+app.port);
 }
