@@ -117,7 +117,10 @@ let runner = new Runner(args.cmd, reload);
 // Watch directory for changes
 if (args._.length > 0) {
 	args._.forEach(dir => {
-		watch(dir, { recursive: true }, (evt, name) => {
+		watch(dir, {
+			recursive: true,
+			filter: x => !/^\.git$/.test(x)
+		}, (evt, name) => {
 			runner.run();
 		});
 	});
