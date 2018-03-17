@@ -1,7 +1,9 @@
 # dev-refresh
 
 `dev-refresh` is a utility to watch for changes in directories, and then run
-your bundler or transpiler or have you, before refreshing your browser.
+your bundler or transpiler or what have you, before refreshing your browser.
+If the bundler/transpiler fails, the error message will be displayed in the
+web page, and the page will not be reloaded.
 
 It supports both serving your local files (if you only need basic web server
 functionality), and proxy requests to a web server if there's a server
@@ -22,13 +24,13 @@ It will output this:
 
 	Usage: dev-refresh [options] watch...
 	Options:
-	 -h, --help          Show this help text and exit
-	 -c, --cmd <cmd>     Run <cmd> on change
-	 -s, --serve <dir>   Serve files in <dir>
-	 -p, --proxy <host>  Proxy requests to <host>
-	     --port <port>   Serve on port <port>.
-	     --host <host>   Serve from host <host>.
-	 -n                  Don't open the page in a browser.
+	-h, --help          Show this help text and exit
+	-c, --cmd <cmd>     Run <cmd> on change
+	-s, --serve <dir>   Serve files in <dir>
+	-p, --proxy <host>  Proxy requests to <host>
+	--port <port>       Serve on port <port>.
+	--host <host>       Serve from host <host>.
+	-n  --no-open       Don't open the page in a browser.
 
 ### Basic server
 

@@ -1,31 +1,114 @@
 <script>
-(function(reloadId) {
+(function() {
+	var reloadId = "";
 	var enableWarnings = true;
 	function warn(str) {
 		if (!enableWarnings) return;
 		console.warn("DEV-REFRESH:", str);
 	}
 
-	var div = document.createElement("div");
-	div.innerHTML = "Loaded.";
-	div.style.position = "fixed";
-	div.style.top = "0px";
-	div.style.left = "0px";
-	div.style.padding = "8px";
-	div.style.fontSize = "18px";
-	div.style.background = "#eee";
-	div.style.borderRight = "1px solid black";
-	div.style.borderBottom = "1px solid black";
-	div.style.opacity = "1";
-	div.style.transition = "opacity 2s";
+	function showLoadDiv() {
+		var div = document.createElement("div");
+		div.textContent = "Loaded.";
+		div.style.position = "fixed";
+		div.style.bottom = "0px";
+		div.style.left = "0px";
+		div.style.padding = "16px";
+		div.style.fontSize = "18px";
+		div.style.background = "#eee";
+		div.style.borderRight = "1px solid #aaa";
+		div.style.borderTop = "1px solid #aaa";
+		div.style.opacity = "1";
+		div.style.transition = "opacity 2s";
 
-	document.body.appendChild(div);
-	setTimeout(function() {
-		div.style.opacity = "0";
 		setTimeout(function() {
-			document.body.removeChild(div);
+			div.style.opacity = "0";
+			setTimeout(function() {
+				document.body.removeChild(div);
+			}, 2000);
 		}, 2000);
-	}, 2000);
+
+		document.body.appendChild(div);
+	}
+	showLoadDiv();
+
+	var displayErrorDiv = null;
+	function displayError(command, code, error) {
+		error = error
+			.replace(/$ *[\r\n]*/m, "")
+			.replace(/[\r\n]*$/m, "");
+
+		var oldDiv = displayErrorDiv;
+		if (oldDiv != null) {
+			oldDiv.style.opacity = "0";
+			setTimeout(function() {
+				document.body.removeChild(oldDiv);
+			}, 500);
+		}
+
+		var div = document.createElement("div");
+		div.style.display = "flex";
+		div.style.flexDirection = "column";
+		div.style.fontSize = "14px";
+		div.style.color = "#eee";
+		div.style.position = "fixed";
+		div.style.margin = "auto";
+		div.style.borderRadius = "5px";
+		div.style.boxShadow = "1px 1px 7px 1px #111";
+
+		div.style.top = "2%";
+		div.style.bottom = "2%";
+		div.style.left = "0px";
+		div.style.right = "0px";
+
+		div.style.boxSizing = "border-box";
+		div.style.width = "90%";
+		div.style.padding = "8px";
+		div.style.background = "#000";
+		div.style.opacity = "0";
+		div.style.transition = "opacity 0.3s";
+
+		// Exit code
+		var exitCodeDiv = document.createElement("div");
+		if (code == null)
+			exitCodeDiv.textContent = "Command exited without an exit code.";
+		else
+			exitCodeDiv.textContent = "Command exited with code "+code+".";
+		div.appendChild(exitCodeDiv);
+
+		// Command
+		var commandDiv = document.createElement("div");
+		var commandDivText = document.createElement("span");
+		commandDivText.innerText = "Command: ";
+		commandDiv.appendChild(commandDivText);
+		var commandDivCmd = document.createElement("span");
+		commandDivCmd.style.whiteSpace = "pre";
+		commandDivCmd.style.fontFamily = "monospace";
+		commandDivCmd.innerText = command;
+		commandDiv.appendChild(commandDivCmd);
+		div.appendChild(commandDiv);
+
+		// Divider
+		var hr = document.createElement("hr");
+		hr.style.color = "#aaa";
+		div.appendChild(hr);
+
+		// Output
+		var errorDiv = document.createElement("div");
+		errorDiv.style.flexGrow = "1";
+		errorDiv.style.whiteSpace = "pre";
+		errorDiv.style.fontFamily = "monospace";
+		errorDiv.style.overflow = "auto";
+		errorDiv.textContent = error;
+		div.appendChild(errorDiv);
+
+		displayErrorDiv = div;
+		document.body.appendChild(div);
+
+		// Animate in
+		window.getComputedStyle(div).opacity;
+		div.style.opacity = "0.9";
+	}
 
 	// Don't print warnings to the console when XHR fails due to
 	// reloading the page
@@ -35,18 +118,27 @@
 	});
 
 	function onload() {
-		location.reload();
+		var obj = JSON.parse(this.responseText);
+		if (obj.reload) {
+			location.reload();
+		} else {
+			reloadId = obj.reloadId;
+			sendRequest();
+
+			if (obj.error != null)
+				displayError(obj.command, obj.code, obj.error);
+		}
 	}
 	function onerror() {
 		warn("XHR error");
-		setTimeout(req, 2000);
+		setTimeout(sendRequest, 2000);
 	}
 	function onabort() {
 		warn("XHR aborted");
-		setTimeout(req, 2000);
+		setTimeout(sendRequest, 2000);
 	}
 
-	function req() {
+	function sendRequest() {
 		var xhr = new XMLHttpRequest();
 		xhr.onload = onload;
 		xhr.onerror = onerror;
@@ -57,6 +149,6 @@
 		xhr.send();
 	}
 
-	req();
-})("{{reloadId}}");
+	sendRequest();
+})();
 </script>

@@ -11,6 +11,14 @@ let http = require("http");
 let https = require("https");
 let open = require("open");
 
+function warn(str) {
+	console.error("Warning: "+str);
+}
+
+function log(str) {
+	console.error(str);
+}
+
 function usage(code) {
 	console.error("Usage: dev-refresh [options] watch...");
 	console.error("Options:");
@@ -47,11 +55,9 @@ if (args.serve && args.proxy) {
 	process.exit(1);
 }
 
-let app = new webframe.App({
-	port: args.port,
-	host: args.host,
-});
-
+if (process.argv.length === 2) {
+	usage(1);
+}
 
 class Runner {
 	constructor(cmd, cb) {
@@ -59,13 +65,19 @@ class Runner {
 		this.cb = cb;
 		this.updateNeeded = false;
 		this.cmdRunning = false;
+		this.output = "";
 	}
 
 	print(d) {
 		d.toString().split("\n")
 			.map(s => s.trim())
 			.filter(s => s !== "")
-			.forEach(s => console.log(s));
+			.forEach(s => log(s));
+	}
+
+	onOutput(d) {
+		this.print(d);
+		this.output += d;
 	}
 
 	run() {
@@ -81,11 +93,12 @@ class Runner {
 
 		this.cmdRunning = true;
 		let child = exec(this.cmd);
-		child.stdout.on("data", d => this.print(d));
-		child.stderr.on("data", d => this.print(d));
+		this.output = "";
+		child.stdout.on("data", d => this.onOutput(d));
+		child.stderr.on("data", d => this.onOutput(d));
 
 		child.on("error", err => {
-			app.warning("Running command failed: "+err.toString());
+			warn("Warning: Running command failed: "+err.toString());
 			this.cmdRunning = false;
 		});
 
@@ -94,19 +107,19 @@ class Runner {
 
 			if (code !== 0) {
 				if (code == null)
-					app.warning("Command exited without an exit code.");
+					warn("Command exited without an exit code.");
 				else
-					app.warning("Command exited with exit code "+code+".");
+					warn("Command exited with exit code "+code+".");
 			}
 
 			if (this.updateNeeded) {
-				app.info(
+				log(
 					"Running update again because files have changed "+
 					"since the child process started.");
 				this.updateNeeded = false;
 				this.run();
 			} else {
-				this.cb();
+				this.cb(code, this.output);
 			}
 		});
 	}
@@ -133,11 +146,29 @@ function randId() {
 // Reload by ending all pending incoming connections
 let pendingResponses = [];
 let reloadId = randId();
-function reload() {
-	app.info("Reloading.");
+let reloadResponse = JSON.stringify({ reload: false, reloadId: reloadId });
+function reload(code, output) {
+	if (code === 0)
+		log("Reloading.\n");
+	else
+		log("Not reloading.\n");
+
 	reloadId = randId();
-	pendingResponses.forEach(res => res.end());
+	let obj = {
+		reload: code === 0,
+		reloadId: reloadId,
+		command: runner.cmd,
+		code: code,
+		error: code === 0 ? null : output,
+	};
+	let json = JSON.stringify(obj);
+
+	pendingResponses.forEach(res => res.end(json));
 	pendingResponses.length = 0;
+
+	// We don't want to respond with 'reload: true' to new clients
+	obj.reload = false;
+	reloadResponse = JSON.stringify(obj);
 }
 
 // Inject reload script into HTML files
@@ -153,12 +184,9 @@ function injectHtml(str, stream) {
 	// Find </body>
 	let matches = str.match(rx);
 	if (matches == null || matches.length === 0) {
-		app.warning("Found no body close tag in '"+path+"'.");
+		warn("Found no body close tag in '"+path+"'.");
 		return stream.end(str);
 	}
-
-	// Replace {{reloadId}} with the actual ID
-	let inject = clientHtml.replace("{{reloadId}}", reloadId);
 
 	// Extract code after and before the </body> tag
 	let match = matches[matches.length - 1];
@@ -167,22 +195,31 @@ function injectHtml(str, stream) {
 	let after = str.slice(idx + match.length);
 
 	stream.write(before);
-	stream.write(inject);
+	stream.write(clientHtml);
 	stream.end(after);
 }
 
-// For long polling
-app.get("/__dev-refresh-poll", (req, res) => {
-	let q = req.url.split("?")[1];
+// Create webframe instance if we need an HTTP server
+let app;
+if (args.serve || args.proxy) {
+	app = new webframe.App({
+		port: args.port,
+		host: args.host,
+	});
 
-	// If we got no query string, or the query string is outdated,
-	// just reload immediately
-	if (!q) return res.end();
-	if (q !== reloadId) return res.end();
+	// For long polling
+	app.get("/__dev-refresh-poll", (req, res) => {
+		let q = req.url.split("?")[1];
 
-	// Otherwise, add it to our list of pending responses for long polling
-	pendingResponses.push(res);
-});
+		if (!q)
+			return res.end(reloadResponse);
+		if (q !== reloadId)
+			return res.end(reloadResponse);
+
+		// Otherwise, add it to our list of pending responses for long polling
+		pendingResponses.push(res);
+	});
+}
 
 // Serve static files
 if (args.serve) {
