@@ -8,7 +8,8 @@
     "minimist": "^1.2.0",
     "node-watch": "^0.6.2",
     "open": "^6.4.0",
-    "webframe": "^0.9.0"
+    "webframe": "^0.9.0",
+    "ws": "^7.1.0"
   },
   "devDependencies": {},
   "scripts": {

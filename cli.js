@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+let WebSocket = require("ws");
 let colors = require("colors");
 let webframe = require("webframe");
 let watch = require("node-watch");
@@ -301,6 +302,74 @@ if (args.proxy) {
 
 	app.all("^.*", (req, res) => {
 		proxy(req, res);
+	});
+
+	let wss = null;
+	app.server.on("upgrade", (oreq, osock, head) => {
+		if (wss == null)
+			wss = new WebSocket.Server({ noServer: true });
+
+		let opts = urllib.parse(args.proxy);
+
+		let s1 = {
+			open: false,
+			queue: [],
+			sock: null,
+		};
+
+		let s2 = {
+			open: false,
+			queue: [],
+			sock: null,
+		};
+
+		s1.sock = new WebSocket(
+			`${opts.protocol == "http:" ? "ws:" : "wss:"}//${opts.host}${oreq.url}`);
+		s1.sock.once("open", () => {
+			s1.open = true;
+			for (let i = 0; i < s1.queue.length; ++i)
+				s1.sock.send(s1.queue[i]);
+			s1.queue = [];
+		});
+		s1.sock.once("close", () => {
+			s1.sock = null;
+			if (s2.sock)
+				s2.sock.close();
+		});
+		s1.sock.on("message", msg => {
+			if (s2.sock && s2.open)
+				s2.sock.send(msg);
+			else if (s2.sock)
+				s2.queue.push(msg);
+		});
+
+		wss.handleUpgrade(oreq, osock, head, sock => {
+
+			// If s1 closed, do nothing
+			if (s1.open && !s1.sock) {
+				s2.sock.close();
+				s2.sock = null;
+				return;
+			}
+
+			s2.sock = sock;
+			s2.open = true;
+			for (let i = 0; i < s2.queue.length; ++i)
+				s2.sock.send(s2.queue[i]);
+			s2.queue = [];
+
+			s2.sock.once("close", () => {
+				s2.sock = null;
+				if (s1.sock)
+					s1.sock.close();
+			});
+			s2.sock.on("message", msg => {
+				if (s1.sock && s1.open)
+					s1.sock.send(msg);
+				else if (s1.sock)
+					s1.queue.push(msg);
+			});
+		});
 	});
 }
 
