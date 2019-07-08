@@ -108,12 +108,12 @@ class Runner {
 		this.child.stdout.on("data", d => this.onOutput(d));
 		this.child.stderr.on("data", d => this.onOutput(d));
 
-		this.child.on("error", err => {
+		this.child.once("error", err => {
 			log("Warning: Running command failed: "+err.toString());
 			this.child = null;
 		});
 
-		this.child.on("exit", (code, sig) => {
+		this.child.once("exit", (code, sig) => {
 			this.child = null;
 
 			if (code !== 0) {
@@ -297,6 +297,11 @@ if (args.proxy) {
 			res.on("end", () => {
 				injectHtml(str, ores);
 			});
+		});
+		req.once("error", err => {
+			console.error("Failed to send request to "+urllib.format(opts)+":", err.code);
+			ores.writeHead(502);
+			ores.end("502 Bad Gateway");
 		});
 		req.end();
 	}
