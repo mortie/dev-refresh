@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+let colors = require("colors");
 let webframe = require("webframe");
 let watch = require("node-watch");
 let parseArgs = require("minimist");
@@ -10,10 +11,6 @@ let urllib = require("url");
 let http = require("http");
 let https = require("https");
 let open = require("open");
-
-function warn(str) {
-	console.error("Warning: "+str);
-}
 
 function log(str) {
 	console.error(str);
@@ -64,8 +61,8 @@ class Runner {
 		this.cmd = cmd;
 		this.cb = cb;
 		this.updateNeeded = false;
-		this.cmdRunning = false;
 		this.output = "";
+		this.child = null;
 	}
 
 	print(d) {
@@ -76,7 +73,7 @@ class Runner {
 	}
 
 	onOutput(d) {
-		this.print(d);
+		this.print(d.blue);
 		this.output += d;
 	}
 
@@ -84,38 +81,36 @@ class Runner {
 		if (!this.cmd)
 			return this.cb();
 
-		if (this.cmdRunning) {
+		if (this.child) {
 			this.updateNeeded = true;
+			this.print("Killing child process because something changed.");
+			this.child.kill("SIGTERM");
 			return;
 		}
 
-		this.print("> "+this.cmd);
+		this.print(("> "+this.cmd).green);
 
-		this.cmdRunning = true;
-		let child = exec(this.cmd);
+		this.child = exec(this.cmd);
 		this.output = "";
-		child.stdout.on("data", d => this.onOutput(d));
-		child.stderr.on("data", d => this.onOutput(d));
+		this.child.stdout.on("data", d => this.onOutput(d));
+		this.child.stderr.on("data", d => this.onOutput(d));
 
-		child.on("error", err => {
-			warn("Warning: Running command failed: "+err.toString());
-			this.cmdRunning = false;
+		this.child.on("error", err => {
+			log("Warning: Running command failed: "+err.toString());
+			this.child = null;
 		});
 
-		child.on("exit", code => {
-			this.cmdRunning = false;
+		this.child.on("exit", (code, sig) => {
+			this.child = null;
 
 			if (code !== 0) {
-				if (code == null)
-					warn("Command exited without an exit code.");
+				if (sig != null)
+					log("Command exited due to "+sig+".");
 				else
-					warn("Command exited with exit code "+code+".");
+					log("Command exited with exit code "+code+".");
 			}
 
 			if (this.updateNeeded) {
-				log(
-					"Running update again because files have changed "+
-					"since the child process started.");
 				this.updateNeeded = false;
 				this.run();
 			} else {
@@ -148,7 +143,7 @@ let pendingResponses = [];
 let reloadId = randId();
 let reloadResponse = JSON.stringify({ reload: false, reloadId: reloadId });
 function reload(code, output) {
-	if (code === 0)
+	if (code === 0 || code == null)
 		log("Reloading.\n");
 	else
 		log("Not reloading.\n");
@@ -184,7 +179,7 @@ function injectHtml(str, stream) {
 	// Find </body>
 	let matches = str.match(rx);
 	if (matches == null || matches.length === 0) {
-		warn("Found no body close tag in '"+path+"'.");
+		log("Warning: Found no body close tag in '"+path+"'.");
 		return stream.end(str);
 	}
 
