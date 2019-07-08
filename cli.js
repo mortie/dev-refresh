@@ -78,15 +78,8 @@ class Runner {
 		this.child = null;
 	}
 
-	print(d) {
-		d.toString().split("\n")
-			.map(s => s.trim())
-			.filter(s => s !== "")
-			.forEach(s => log(s));
-	}
-
 	onOutput(d) {
-		this.print(d.blue);
+		process.stderr.write(d.toString().blue);
 		this.output += d;
 	}
 
@@ -96,12 +89,12 @@ class Runner {
 
 		if (this.child) {
 			this.updateNeeded = true;
-			this.print("Killing child process because something changed.");
+			log("Killing child process because something changed.");
 			this.child.kill("SIGTERM");
 			return;
 		}
 
-		this.print(("> "+this.cmd).green);
+		log(("> "+this.cmd).green);
 
 		this.child = exec(this.cmd);
 		this.output = "";
