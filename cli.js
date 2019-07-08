@@ -12,6 +12,19 @@ let http = require("http");
 let https = require("https");
 let open = require("open");
 
+function debounce(func, time, ...args) {
+	let to = null;
+
+	return function() {
+		if (to != null) {
+			clearTimeout(to);
+			to = null;
+		}
+
+		to = setTimeout(func, time, ...args);
+	}
+}
+
 function log(str) {
 	console.error(str);
 }
@@ -124,13 +137,15 @@ let runner = new Runner(args.cmd, reload);
 
 // Watch directory for changes
 if (args._.length > 0) {
+	let watchCB = debounce(() => {
+		runner.run();
+	}, 100);
+
 	args._.forEach(dir => {
 		watch(dir, {
 			recursive: true,
-			filter: x => !/^\.git$/.test(x)
-		}, (evt, name) => {
-			runner.run();
-		});
+			filter: x => !/(^|\/)(node_modules|.git)(\/|$)/.test(x)
+		}, watchCB);
 	});
 }
 
