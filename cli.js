@@ -152,18 +152,22 @@ let pendingResponses = [];
 let reloadId = randId();
 let reloadResponse = JSON.stringify({ reload: false, reloadId: reloadId });
 function reload(code, output) {
-	if (code === 0 || code == null)
+	let reload;
+	if (code === 0 || code == null) {
+		reload = true;
 		log("Reloading.\n");
-	else
+	} else {
+		reload = false;
 		log("Not reloading.\n");
+	}
 
 	reloadId = randId();
 	let obj = {
-		reload: code === 0,
+		reload,
 		reloadId: reloadId,
 		command: runner.cmd,
 		code: code,
-		error: code === 0 ? null : output,
+		error: reload ? null : output,
 	};
 	let json = JSON.stringify(obj);
 
