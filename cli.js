@@ -240,8 +240,11 @@ if (args.serve) {
 	app.get("^.*", webframe.static(args.serve));
 }
 
-// Proxy 
+// Proxy
 if (args.proxy) {
+	if (!args.proxy.includes("://"))
+		args.proxy = "http://"+args.proxy
+
 	function proxy(oreq, ores) {
 		let opts = urllib.parse(args.proxy);
 		opts.headers = oreq.headers;
