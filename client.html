@@ -7,7 +7,11 @@
 		console.warn("DEV-REFRESH:", str);
 	}
 
-	function showLoadDiv() {
+	var displayLoadDiv = null;
+	function displayLoad(output) {
+		if (displayLoadDiv != null)
+			document.body.removeChild(displayLoadDiv);
+
 		var div = document.createElement("div");
 		div.textContent = "Loaded.";
 		div.style.position = "fixed";
@@ -19,25 +23,70 @@
 		div.style.borderRight = "1px solid #aaa";
 		div.style.borderTop = "1px solid #aaa";
 		div.style.opacity = "1";
-		div.style.transition = "opacity 2s";
+		div.style.transition = "opacity 1s";
 
-		setTimeout(function() {
-			div.style.opacity = "0";
-			setTimeout(function() {
+		let outputTimeout = 2000;
+
+		if (output) {
+			outputTimeout = 5000;
+
+			// Divider
+			var hr = document.createElement("hr");
+			hr.style.color = "#ddd";
+			div.appendChild(hr);
+
+			// Output
+			var outputDiv = document.createElement("div");
+			outputDiv.style.maxHeight = "50vh";
+			outputDiv.style.overflowY = "auto";
+			outputDiv.style.whiteSpace = "pre";
+			outputDiv.style.fontFamily = "monospace";
+			outputDiv.style.overflow = "auto";
+			outputDiv.style.fontSize = "12px";
+			outputDiv.style.paddingRight = "20px";
+			outputDiv.textContent = output;
+			div.appendChild(outputDiv);
+
+			if (output.split("\n").length > 8)
+				outputTimeout = Infinity;
+		}
+
+		if (outputTimeout == Infinity) {
+			// X button
+			let xBtn = document.createElement("div");
+			xBtn.textContent = "❌";
+			xBtn.style.position = "absolute";
+			xBtn.style.top = "0px";
+			xBtn.style.right = "0px";
+			xBtn.style.borderLeft = "1px solid #aaa";
+			xBtn.style.borderBottom = "1px solid #aaa";
+			xBtn.style.backgroundColor = "#ddd";
+			xBtn.style.width = "20px";
+			xBtn.style.height = "20px";
+			xBtn.style.lineHeight = "20px";
+			xBtn.style.textAlign = "center";
+			xBtn.style.cursor = "pointer";
+			xBtn.addEventListener("click", () => {
+				displayLoadDiv = null;
 				document.body.removeChild(div);
-			}, 2000);
-		}, 2000);
+			});
+			div.appendChild(xBtn);
+		} else {
+			setTimeout(function() {
+				div.style.opacity = "0";
+				displayLoadDiv = null;
+				setTimeout(function() {
+					document.body.removeChild(div);
+				}, 1000);
+			}, 3000);
+		}
 
+		displayLoadDiv = div;
 		document.body.appendChild(div);
 	}
-	showLoadDiv();
 
 	var displayErrorDiv = null;
 	function displayError(command, code, error) {
-		error = error
-			.replace(/$ *[\r\n]*/m, "")
-			.replace(/[\r\n]*$/m, "");
-
 		var oldDiv = displayErrorDiv;
 		if (oldDiv != null) {
 			oldDiv.style.opacity = "0";
@@ -125,8 +174,18 @@
 			reloadId = obj.reloadId;
 			sendRequest();
 
-			if (obj.error != null)
-				displayError(obj.command, obj.code, obj.error);
+			let output;
+			if (obj.output)
+				output = obj.output;
+			else
+				output = "(no output)";
+
+			if (obj.code !== 0 && obj.code != null)
+				displayError(obj.command, obj.code, output);
+			else if (obj.output)
+				displayLoad(output);
+			else
+				displayLoad();
 		}
 	}
 	function onerror() {

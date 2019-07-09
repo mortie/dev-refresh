@@ -164,10 +164,10 @@ function reload(code, output) {
 	reloadId = randId();
 	let obj = {
 		reload,
-		reloadId: reloadId,
+		code,
+		output,
+		reloadId,
 		command: runner.cmd,
-		code: code,
-		error: reload ? null : output,
 	};
 	let json = JSON.stringify(obj);
 
@@ -329,6 +329,9 @@ if (args.proxy) {
 
 		s1.sock = new WebSocket(
 			`${opts.protocol == "http:" ? "ws:" : "wss:"}//${opts.host}${oreq.url}`);
+		s1.sock.once("error", err => {
+			console.error("Proxy sock error:", err.code);
+		});
 		s1.sock.once("open", () => {
 			s1.open = true;
 			for (let i = 0; i < s1.queue.length; ++i)
@@ -357,6 +360,11 @@ if (args.proxy) {
 			}
 
 			s2.sock = sock;
+
+			s2.sock.once("error", err => {
+				console.error("Proxy sock error:", err.code);
+			});
+
 			s2.open = true;
 			for (let i = 0; i < s2.queue.length; ++i)
 				s2.sock.send(s2.queue[i]);
